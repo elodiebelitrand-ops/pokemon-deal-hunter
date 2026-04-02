@@ -213,3 +213,11 @@ loadHealth();
 </script>
 </body>
 </html>
+function buildPlatformSearchLinks(query) {
+  const q = encodeURIComponent(query || '');
+  return {
+    ebay: `https://www.ebay.fr/sch/i.html?_nkw=${q}`,
+    vinted: `https://www.vinted.fr/catalog?search_text=${q}`,
+    lbc: `https://www.leboncoin.fr/recherche?text=${q}`
+  };
+}
