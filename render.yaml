@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: pokemon-deal-hunter
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: ENABLE_EMAIL_ALERTS
+        value: "false"
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: ALERT_FROM
+        sync: false
+      - key: ALERT_TO
+        sync: false
+      - key: ALERT_MIN_SAVING_PERCENT
+        value: "50"
+      - key: ALERT_MAX_ITEMS
+        value: "5"
+      - key: EBAY_CLIENT_ID
+        sync: false
+      - key: EBAY_CLIENT_SECRET
+        sync: false
+      - key: CARDMARKET_APP_TOKEN
+        sync: false
+      - key: CARDMARKET_APP_SECRET
+        sync: false
+      - key: CARDMARKET_ACCESS_TOKEN
+        sync: false
+      - key: CARDMARKET_ACCESS_TOKEN_SECRET
+        sync: false
