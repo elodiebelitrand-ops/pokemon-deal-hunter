@@ -22,7 +22,7 @@ export const config = {
   features: {
     vinted: process.env.ENABLE_VINTED === 'true',
     lbc: process.env.ENABLE_LBC === 'true',
-    demoMode: process.env.ALLOW_DEMO_MODE !== 'false'
+    demoMode: process.env.ALLOW_DEMO_MODE === 'true'
   }
 };
 
