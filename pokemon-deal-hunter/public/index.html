@@ -635,7 +635,16 @@ async function startHunt(){
       toast('🔍 Aucun deal', 'Essaie un autre seuil ou une autre sélection', 'info');
     }
   } catch(err) {
-    console.error(err);
+    
+    console.log('Lancement recherche');
+
+const res = await fetch('https://pokemon-deal-hunter.onrender.com/api/hunt', {
+  method:'POST',
+  headers:{'Content-Type':'application/json'},
+  body:JSON.stringify(payload)
+});
+
+console.log('Réponse API', res);
     log(`❌ ${err.message}`, 'fi');
     toast('❌ Erreur', err.message || 'Erreur inconnue', 'fire');
     renderDeals([]);
