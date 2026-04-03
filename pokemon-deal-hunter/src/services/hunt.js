@@ -1,5 +1,4 @@
 import { config, hasCardmarketCredentials, hasEbayCredentials } from '../config.js';
-import { buildDemoDeals } from './demo.js';
 import { searchEbayListings } from './ebay.js';
 import { findCardmarketReference } from './cardmarket.js';
 
@@ -34,6 +33,7 @@ const KEYWORDS = [
 
 function uniqBy(array, keyFn) {
   const seen = new Set();
+
   return array.filter((item) => {
     const key = keyFn(item);
     if (seen.has(key)) return false;
@@ -48,6 +48,7 @@ function calculateDeal(listing, reference, category, threshold) {
 
   const savingEuros = Number((reference.referencePrice - listing.foundPrice).toFixed(2));
   const saving = Math.round((savingEuros / reference.referencePrice) * 100);
+
   if (saving < threshold) return null;
 
   return {
@@ -58,11 +59,11 @@ function calculateDeal(listing, reference, category, threshold) {
     foundPrice: listing.foundPrice,
     saving,
     savingEuros,
-    condition: listing.condition,
-    seller: listing.seller,
-    location: listing.location,
-    posted: listing.posted,
-    url: listing.url,
+    condition: listing.condition || '',
+    seller: listing.seller || '',
+    location: listing.location || '',
+    posted: listing.posted || '',
+    url: listing.url || '#',
     notes: `Référence Cardmarket via ${reference.source}. Score de match: ${reference.matchScore?.toFixed(2) ?? 'n/a'}`,
     hot: saving >= 50
   };
@@ -73,64 +74,87 @@ function buildQueries(activeCats = [], activeKws = []) {
 
   for (const cat of activeCats) {
     if (CATS[cat]) {
-      queries.push({ category: cat, label: CATS[cat].label, q: CATS[cat].q });
+      queries.push({
+        category: cat,
+        label: CATS[cat].label,
+        q: CATS[cat].q
+      });
     }
   }
 
   for (const kwId of activeKws) {
     const kw = KEYWORDS.find((item) => item.id === kwId);
     if (kw) {
-      queries.push({ category: 'edition1', label: kw.label, q: kw.q });
+      queries.push({
+        category: 'edition1',
+        label: kw.label,
+        q: kw.q
+      });
     }
   }
 
   return queries;
 }
 
-export async function runHunt({ threshold = 30, maxResults = 8, activeCats = [], activeKws = [], activePlats = [] }) {
+export async function runHunt({
+  threshold = 30,
+  maxResults = 8,
+  activeCats = [],
+  activeKws = [],
+  activePlats = []
+}) {
+  const warnings = [];
   const requestedEbay = activePlats.includes('ebay');
 
-  if ((!requestedEbay || !hasEbayCredentials() || !hasCardmarketCredentials()) && config.features.demoMode) {
-    return {
-      mode: 'demo',
-      deals: buildDemoDeals({ threshold }).slice(0, maxResults + 4),
-      warnings: [
-        'Mode démo activé : renseigne les clés eBay et Cardmarket pour obtenir des données réelles.',
-        activePlats.includes('vinted') ? 'Vinted non activé : l’API officielle est réservée aux comptes Pro allowlistés.' : null,
-        activePlats.includes('lbc') ? 'Le Bon Coin non activé : aucun connecteur officiel n’est fourni ici.' : null
-      ].filter(Boolean)
-    };
+  if (activePlats.includes('vinted')) {
+    warnings.push('Vinted ignoré : cette version n’active pas Vinted sans accès officiel Vinted Pro.');
   }
 
-  const warnings = [];
-  if (activePlats.includes('vinted')) {
-    warnings.push('Vinted ignoré : ce projet ne l’active pas sans accès Vinted Pro allowlisté.');
-  }
   if (activePlats.includes('lbc')) {
-    warnings.push('Le Bon Coin ignoré : aucun adaptateur officiel n’est activé dans cette version.');
+    warnings.push('Le Bon Coin ignoré : cette version ne dispose pas d’un connecteur officiel Leboncoin.');
   }
+
   if (!requestedEbay) {
-    warnings.push('Aucune plateforme réelle active : coche eBay pour lancer une recherche officielle.');
+    warnings.push('Aucune plateforme réelle active : coche eBay pour lancer une vraie recherche.');
   }
+
   if (!hasEbayCredentials()) {
     warnings.push('Clés eBay manquantes.');
   }
+
   if (!hasCardmarketCredentials()) {
     warnings.push('Clés Cardmarket manquantes.');
   }
+
   if (!requestedEbay || !hasEbayCredentials() || !hasCardmarketCredentials()) {
-    return { mode: 'disabled', deals: [], warnings };
+    return {
+      mode: 'disabled',
+      deals: [],
+      warnings: uniqBy(warnings, (item) => item)
+    };
   }
 
   const queries = buildQueries(activeCats, activeKws).slice(0, 12);
   const collectedDeals = [];
 
   for (const query of queries) {
-    const listings = await searchEbayListings({ query: query.q, limit: 8 });
+    let listings = [];
+
+    try {
+      listings = await searchEbayListings({
+        query: query.q,
+        limit: 8
+      });
+    } catch (error) {
+      warnings.push(`Recherche eBay impossible pour "${query.label}": ${error.message}`);
+      continue;
+    }
+
     for (const listing of listings) {
       try {
         const reference = await findCardmarketReference(listing.name);
         const deal = calculateDeal(listing, reference, query.category, threshold);
+
         if (deal) {
           collectedDeals.push(deal);
         }
@@ -140,7 +164,10 @@ export async function runHunt({ threshold = 30, maxResults = 8, activeCats = [],
     }
   }
 
-  const deduped = uniqBy(collectedDeals, (item) => `${item.name}|${item.platform}|${item.foundPrice}`.toLowerCase())
+  const deduped = uniqBy(
+    collectedDeals,
+    (item) => `${item.name}|${item.platform}|${item.foundPrice}`.toLowerCase()
+  )
     .sort((a, b) => b.saving - a.saving)
     .slice(0, maxResults + 4);
 
