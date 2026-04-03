@@ -407,6 +407,88 @@ function filt(type, btn){
 function renderDeals(deals){
   const grid = document.getElementById('grid');
   let list = deals;
+
+  if (curFilt === 'hot') {
+    list = deals.filter(d => d.hot || Number(d.saving || 0) >= 50);
+  } else if (curFilt !== 'all') {
+    list = deals.filter(d => d.platform === curFilt);
+  }
+
+  if (!list.length) {
+    grid.innerHTML = `
+      <div class="empty">
+        <div class="empty-i">${deals.length ? '🔍' : '🎴'}</div>
+        <div class="empty-t">${deals.length ? 'AUCUN RÉSULTAT ICI' : 'PRÊT À CHASSER'}</div>
+        <div class="empty-s">${deals.length ? 'Essaie un autre filtre.' : 'Lance la chasse pour détecter des bonnes affaires.'}</div>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = list.slice(0, maxResults + 4).map(d => {
+    const pname = PLATNAMES[d.platform] || d.platform || 'Plateforme';
+    const links = buildPlatformSearchLinks(d.name || lastSearchQuery);
+    const ebayBestLink = d.platform === 'ebay' && d.url ? d.url : links.ebay;
+    const categoryLabel = CATS[d.category]?.label || d.category || 'Carte Pokémon';
+
+    const platformClass =
+      d.platform === 'vinted' ? 'pt-vinted' :
+      d.platform === 'lbc' ? 'pt-lbc' :
+      'pt-ebay';
+
+    return `
+      <div class="dc ${d.hot || Number(d.saving || 0) >= 50 ? 'hot' : ''}">
+        <div class="dc-bar" style="background:${GRAD[d.category] || 'linear-gradient(90deg,#3b82f6,#8b5cf6)'}"></div>
+        <div class="dc-bd">
+          <div class="dc-r1">
+            <div>
+              <div class="dc-nm">${esc(d.name)}</div>
+              <div class="dc-sub">${esc(categoryLabel)} · ${esc(d.condition || '—')}</div>
+            </div>
+            <span class="pt ${platformClass}">${esc(String(pname).toUpperCase())}</span>
+          </div>
+
+          <div class="prices">
+            <div class="pc">
+              <div class="pc-l">CARDMARKET</div>
+              <div class="pc-v vcm">${fmt(d.cmPrice)}</div>
+            </div>
+            <div class="pc">
+              <div class="pc-l">ANNONCE</div>
+              <div class="pc-v vg">${fmt(d.foundPrice)}</div>
+            </div>
+            <div class="pc">
+              <div class="pc-l">REMISE</div>
+              <div class="pc-v vf">−${Math.round(Number(d.saving || 0))}%</div>
+            </div>
+          </div>
+
+          <div class="sav">
+            <span class="sav-l">💰 Économie estimée</span>
+            <span class="sav-r">+${fmt(d.savingEuros)}</span>
+          </div>
+
+          <div class="dc-ft" style="gap:10px;align-items:flex-start">
+            <div class="dc-meta">
+              ${d.location ? `<b>${esc(d.location)}</b> ` : ''}${esc(d.posted || '')}
+              ${d.seller ? ` · ${esc(d.seller)}` : ''}
+              ${d.notes ? `<br><i style="color:var(--muted2)">${esc(d.notes)}</i>` : ''}
+              <br>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+                <a class="btn-go" href="${links.vinted}" target="_blank" rel="noopener">VINTED</a>
+                <a class="btn-go" href="${links.lbc}" target="_blank" rel="noopener">LEBONCOIN</a>
+                <a class="btn-go" href="${ebayBestLink}" target="_blank" rel="noopener">EBAY</a>
+              </div>
+            </div>
+            <a class="btn-go" href="${esc(d.url || '#')}" target="_blank" rel="noopener">VOIR →</a>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+  const grid = document.getElementById('grid');
+  let list = deals;
   if (curFilt==='hot') list = deals.filter(d => d.hot || Number(d.saving||0) >= 50);
   else if (curFilt!=='all') list = deals.filter(d => d.platform === curFilt);
 
